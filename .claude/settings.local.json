@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --version:*)",
+      "Bash(npm --version:*)",
+      "WebSearch",
+      "WebFetch(domain:pocketbase.io)",
+      "Bash(npx sv create:*)",
+      "Bash(npx sv add:*)",
+      "Bash(npx svelte-kit sync)",
+      "Bash(npx svelte-check:*)"
+    ]
+  }
+}
