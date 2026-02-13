@@ -1,14 +1,13 @@
 import type { Handle } from '@sveltejs/kit';
 import { createPocketBase } from '$lib/pocketbase';
+import { dev } from '$app/environment';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const pb = createPocketBase();
 
-	// Load auth from cookie
 	const cookie = event.request.headers.get('cookie') || '';
 	pb.authStore.loadFromCookie(cookie);
 
-	// Try to refresh auth if valid
 	if (pb.authStore.isValid) {
 		try {
 			await pb.collection('users').authRefresh();
@@ -22,10 +21,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const response = await resolve(event);
 
-	// Set auth cookie on response
 	const setCookie = pb.authStore.exportToCookie({
 		httpOnly: false,
-		secure: false, // set true in production
+		secure: !dev,
 		sameSite: 'lax',
 		path: '/'
 	});

@@ -8,7 +8,8 @@
       "Bash(npx sv create:*)",
       "Bash(npx sv add:*)",
       "Bash(npx svelte-kit sync)",
-      "Bash(npx svelte-check:*)"
+      "Bash(npx svelte-check:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }
