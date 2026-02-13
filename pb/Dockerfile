@@ -13,6 +13,6 @@ RUN wget -q "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VE
 
 COPY pb_migrations/ ./pb_migrations/
 
-EXPOSE 8090
+EXPOSE ${PORT:-8090}
 
-CMD ["./pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=./pb_migrations"]
+CMD sh -c "./pocketbase serve --http=0.0.0.0:${PORT:-8090} --dir=/pb_data --migrationsDir=./pb_migrations"
