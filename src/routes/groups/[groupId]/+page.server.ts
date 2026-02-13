@@ -9,7 +9,19 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		sort: '-date,-created'
 	});
 
-	return { expenses };
+	const splits = await locals.pb.collection('expense_splits').getFullList({
+		filter: expenses.map((e) => `expense = "${e.id}"`).join(' || ') || '1=0'
+	});
+
+	const splitsByExpense: Record<string, { user: string; amount: number; parts: number | null }[]> = {};
+	for (const split of splits) {
+		if (!splitsByExpense[split.expense]) {
+			splitsByExpense[split.expense] = [];
+		}
+		splitsByExpense[split.expense].push({ user: split.user, amount: split.amount, parts: split.parts ?? null });
+	}
+
+	return { expenses, splitsByExpense };
 };
 
 export const actions: Actions = {
@@ -34,6 +46,16 @@ export const actions: Actions = {
 			return fail(400, { error: 'Select at least one person to split with.' });
 		}
 
+		if (split_type === 'exact') {
+			const total = splitUsers.reduce(
+				(sum, userId) => sum + (parseFloat(data.get(`amount_${userId}`) as string) || 0),
+				0
+			);
+			if (Math.round(total * 100) !== Math.round(amount * 100)) {
+				return fail(400, { error: 'Split amounts must add up to the total expense amount.' });
+			}
+		}
+
 		try {
 			const expense = await locals.pb.collection('expenses').create({
 				group: params.groupId,
@@ -54,6 +76,20 @@ export const actions: Actions = {
 						amount: amounts[i]
 					});
 				}
+			} else if (split_type === 'parts') {
+				const parts = splitUsers.map(
+					(userId) => parseInt(data.get(`parts_${userId}`) as string) || 1
+				);
+				const totalParts = parts.reduce((a, b) => a + b, 0);
+				for (let i = 0; i < splitUsers.length; i++) {
+					const userAmount = Math.round((amount * parts[i]) / totalParts * 100) / 100;
+					await locals.pb.collection('expense_splits').create({
+						expense: expense.id,
+						user: splitUsers[i],
+						amount: userAmount,
+						parts: parts[i]
+					});
+				}
 			} else if (split_type === 'exact') {
 				for (const userId of splitUsers) {
 					const userAmount = parseFloat(data.get(`amount_${userId}`) as string) || 0;
@@ -66,8 +102,10 @@ export const actions: Actions = {
 			}
 
 			return { success: true };
-		} catch {
-			return fail(400, { error: 'Failed to create expense.' });
+		} catch (err) {
+			console.error('addExpense error:', err);
+			const message = err instanceof Error ? err.message : 'Failed to create expense.';
+			return fail(400, { error: message });
 		}
 	},
 
@@ -91,6 +129,16 @@ export const actions: Actions = {
 
 		if (splitUsers.length === 0) {
 			return fail(400, { error: 'Select at least one person to split with.' });
+		}
+
+		if (split_type === 'exact') {
+			const total = splitUsers.reduce(
+				(sum, userId) => sum + (parseFloat(data.get(`amount_${userId}`) as string) || 0),
+				0
+			);
+			if (Math.round(total * 100) !== Math.round(amount * 100)) {
+				return fail(400, { error: 'Split amounts must add up to the total expense amount.' });
+			}
 		}
 
 		try {
@@ -119,6 +167,20 @@ export const actions: Actions = {
 						amount: amounts[i]
 					});
 				}
+			} else if (split_type === 'parts') {
+				const parts = splitUsers.map(
+					(userId) => parseInt(data.get(`parts_${userId}`) as string) || 1
+				);
+				const totalParts = parts.reduce((a, b) => a + b, 0);
+				for (let i = 0; i < splitUsers.length; i++) {
+					const userAmount = Math.round((amount * parts[i]) / totalParts * 100) / 100;
+					await locals.pb.collection('expense_splits').create({
+						expense: expenseId,
+						user: splitUsers[i],
+						amount: userAmount,
+						parts: parts[i]
+					});
+				}
 			} else if (split_type === 'exact') {
 				for (const userId of splitUsers) {
 					const userAmount = parseFloat(data.get(`amount_${userId}`) as string) || 0;
@@ -131,8 +193,10 @@ export const actions: Actions = {
 			}
 
 			return { success: true };
-		} catch {
-			return fail(400, { error: 'Failed to update expense.' });
+		} catch (err) {
+			console.error('editExpense error:', err);
+			const message = err instanceof Error ? err.message : 'Failed to update expense.';
+			return fail(400, { error: message });
 		}
 	},
 

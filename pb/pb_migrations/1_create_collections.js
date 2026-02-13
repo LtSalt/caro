@@ -45,8 +45,8 @@ migrate(
       listRule: '@request.auth.id != ""',
       viewRule: '@request.auth.id != ""',
       createRule: '@request.auth.id != ""',
-      updateRule: '@request.auth.id != "" && @request.auth.id = created_by',
-      deleteRule: '@request.auth.id != "" && @request.auth.id = created_by',
+      updateRule: '@request.auth.id != ""',
+      deleteRule: '@request.auth.id != ""',
     });
     app.save(groups);
 
@@ -116,7 +116,7 @@ migrate(
           name: "split_type",
           type: "select",
           required: true,
-          values: ["equal", "exact", "percentage"],
+          values: ["equal", "exact", "parts", "percentage"],
           maxSelect: 1,
         },
         { name: "date", type: "date", required: true },

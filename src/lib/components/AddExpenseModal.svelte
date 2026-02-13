@@ -1,22 +1,106 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { formatCurrency } from '$lib/utils';
 	import type { RecordModel } from 'pocketbase';
+
+	interface Split {
+		user: string;
+		amount: number;
+		parts: number | null;
+	}
 
 	interface Props {
 		group: RecordModel;
 		members: RecordModel[];
 		currentUserId: string;
 		expense?: RecordModel | null;
+		expenseSplits?: Split[];
 		onclose: () => void;
 	}
 
-	let { group, members, currentUserId, expense = null, onclose }: Props = $props();
+	let { group, members, currentUserId, expense = null, expenseSplits = [], onclose }: Props = $props();
 
 	const isEditing = !!expense;
 
 	let loading = $state(false);
-	let splitType = $state(expense?.split_type ?? 'equal');
-	let selectedUsers = $state<string[]>(members.map((m) => m['user'] as string));
+	let error = $state<string | null>(null);
+	function initialSplitType(): string {
+		if (!isEditing || expenseSplits.length === 0) return 'equal';
+		const amounts = expenseSplits.map((s) => Math.round(s.amount * 100));
+		const allEqual = amounts.every((a) => a === amounts[0]);
+		return allEqual ? 'equal' : 'parts';
+	}
+
+	let splitType = $state(initialSplitType());
+	let totalAmount = $state(expense?.amount ?? 0);
+	let selectedUsers = $state<string[]>(
+		isEditing && expenseSplits.length > 0
+			? expenseSplits.map((s) => s.user)
+			: members.map((m) => m['user'] as string)
+	);
+
+	// Build a lookup of existing split amounts by user
+	const existingSplitAmounts: Record<string, number> = {};
+	for (const s of expenseSplits) {
+		existingSplitAmounts[s.user] = s.amount;
+	}
+
+	function initAmounts(): Record<string, string> {
+		const result: Record<string, string> = {};
+		for (const m of members) {
+			const userId = m['user'] as string;
+			const existing = existingSplitAmounts[userId];
+			result[userId] = existing !== undefined ? String(existing) : '';
+		}
+		return result;
+	}
+
+	function initParts(): Record<string, string> {
+		const result: Record<string, string> = {};
+		for (const s of expenseSplits) {
+			if (s.parts) {
+				result[s.user] = String(s.parts);
+			}
+		}
+		for (const m of members) {
+			const userId = m['user'] as string;
+			if (!(userId in result)) {
+				result[userId] = '1';
+			}
+		}
+		return result;
+	}
+
+	let userAmounts = $state<Record<string, string>>(initAmounts());
+	let userParts = $state<Record<string, string>>(initParts());
+
+	// Reactively compute each user's share based on split type
+	let computedShares = $derived.by(() => {
+		const shares: Record<string, number> = {};
+		const active = selectedUsers;
+		if (active.length === 0 || !totalAmount) return shares;
+
+		if (splitType === 'equal') {
+			const perPerson = Math.round((totalAmount / active.length) * 100) / 100;
+			for (const userId of active) {
+				shares[userId] = perPerson;
+			}
+		} else if (splitType === 'parts') {
+			let total = 0;
+			for (const userId of active) {
+				total += parseInt(userParts[userId]) || 1;
+			}
+			for (const userId of active) {
+				const p = parseInt(userParts[userId]) || 1;
+				shares[userId] = Math.round((totalAmount * p / total) * 100) / 100;
+			}
+		} else if (splitType === 'exact') {
+			for (const userId of active) {
+				shares[userId] = parseFloat(userAmounts[userId]) || 0;
+			}
+		}
+		return shares;
+	});
 
 	const today = new Date().toISOString().split('T')[0];
 
@@ -55,17 +139,26 @@
 			</button>
 		</div>
 
+		{#if error}
+			<div class="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+		{/if}
+
 		<form
 			method="POST"
 			action={isEditing ? '?/editExpense' : '?/addExpense'}
 			use:enhance={() => {
 				loading = true;
+				error = null;
 				return async ({ result, update }) => {
 					loading = false;
 					if (result.type === 'success') {
 						onclose();
+						await update();
+					} else if (result.type === 'failure') {
+						error = (result.data as { error?: string })?.error ?? 'Something went wrong.';
+					} else {
+						await update();
 					}
-					await update();
 				};
 			}}
 		>
@@ -94,7 +187,7 @@
 					min="0.01"
 					step="0.01"
 					placeholder="0.00"
-					value={expense?.amount ?? ''}
+					bind:value={totalAmount}
 					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none"
 				/>
 			</label>
@@ -129,6 +222,21 @@
 			<input type="hidden" name="split_type" value={splitType} />
 
 			<fieldset class="mb-3">
+				<legend class="mb-1 block text-sm font-medium text-gray-700">Split type</legend>
+				<div class="flex gap-2">
+					{#each [['equal', 'Equal'], ['parts', 'By parts'], ['exact', 'Exact amounts']] as [value, label]}
+						<button
+							type="button"
+							onclick={() => (splitType = value)}
+							class="rounded-lg border px-3 py-1.5 text-sm {splitType === value ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}"
+						>
+							{label}
+						</button>
+					{/each}
+				</div>
+			</fieldset>
+
+			<fieldset class="mb-3">
 				<legend class="mb-1 block text-sm font-medium text-gray-700">Split between</legend>
 				<div class="space-y-1">
 					{#each members as member}
@@ -144,7 +252,33 @@
 								onchange={() => toggleUser(userId)}
 								class="rounded border-gray-300"
 							/>
-							<span class="text-sm text-gray-700">{userName}</span>
+							<span class="flex-1 text-sm text-gray-700">{userName}</span>
+							{#if splitType === 'parts' && selectedUsers.includes(userId)}
+								<input
+									type="number"
+									name="parts_{userId}"
+									min="1"
+									bind:value={userParts[userId]}
+									class="w-16 rounded border border-gray-300 px-2 py-1 text-right text-sm"
+								/>
+								<span class="text-xs text-gray-400">parts</span>
+							{/if}
+							{#if splitType === 'exact' && selectedUsers.includes(userId)}
+								<span class="text-xs text-gray-500">{group.currency}</span>
+								<input
+									type="number"
+									name="amount_{userId}"
+									min="0"
+									step="0.01"
+									bind:value={userAmounts[userId]}
+									placeholder="0.00"
+									class="w-20 rounded border border-gray-300 px-2 py-1 text-right text-sm"
+								/>
+							{/if}
+							{#if splitType !== 'exact' && selectedUsers.includes(userId) && computedShares[userId] !== undefined}
+								<span class="text-xs text-gray-400">&middot;</span>
+								<span class="text-xs text-gray-500">{formatCurrency(computedShares[userId], group.currency)}</span>
+							{/if}
 						</label>
 					{/each}
 				</div>

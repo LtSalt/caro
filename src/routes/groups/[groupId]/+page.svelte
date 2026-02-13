@@ -9,9 +9,25 @@
 	let editingExpense = $state<RecordModel | null>(null);
 
 	let expenses = $derived(data.expenses);
+	let splitsByExpense = $derived(data.splitsByExpense);
 	let group = $derived(data.group);
 	let members = $derived(data.members);
 	let currentUserId = $derived(data.currentUserId);
+
+	function getUserShare(expense: RecordModel): number | null {
+		const splits = splitsByExpense[expense.id];
+		if (!splits) return null;
+		const mySplit = splits.find((s) => s.user === currentUserId);
+		if (!mySplit) return null;
+
+		if (expense.paid_by === currentUserId) {
+			// I paid — I get back the total minus my own share
+			return expense.amount - mySplit.amount;
+		} else {
+			// Someone else paid — I owe my share
+			return -mySplit.amount;
+		}
+	}
 </script>
 
 <div class="mt-4 space-y-4">
@@ -42,6 +58,13 @@
 						<div class="text-sm text-gray-500">
 							Paid by {expense.expand?.paid_by?.name || 'Unknown'} &middot; {formatDate(expense.date)}
 						</div>
+						{#each [getUserShare(expense)] as share}
+							{#if share !== null && share !== 0}
+								<div class="mt-0.5 text-xs {share > 0 ? 'text-green-600' : 'text-red-600'}">
+									{share > 0 ? `You get back ${formatCurrency(share, group.currency)}` : `You owe ${formatCurrency(Math.abs(share), group.currency)}`}
+								</div>
+							{/if}
+						{/each}
 					</div>
 					<div class="flex items-center gap-2">
 						<span class="font-semibold text-gray-900">
@@ -90,6 +113,7 @@
 		{members}
 		{currentUserId}
 		expense={editingExpense}
+		expenseSplits={splitsByExpense[editingExpense.id] ?? []}
 		onclose={() => (editingExpense = null)}
 	/>
 {/if}
