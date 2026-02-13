@@ -8,12 +8,27 @@
 <div class="mx-auto max-w-sm py-12">
 	<h1 class="mb-6 text-2xl font-bold text-gray-900">Sign in</h1>
 
+	{#if form?.resent}
+		<div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
+			Verification email sent to <strong>{form.email}</strong>. Check your inbox.
+		</div>
+	{/if}
+
 	{#if form?.error}
-		<div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{form.error}</div>
+		<div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+			{form.error}
+			{#if 'unverified' in form}
+				<form method="POST" action="?/resend" class="mt-2" use:enhance>
+					<input type="hidden" name="email" value={form.email} />
+					<button type="submit" class="font-medium underline">Resend verification email</button>
+				</form>
+			{/if}
+		</div>
 	{/if}
 
 	<form
 		method="POST"
+		action="?/login"
 		use:enhance={() => {
 			loading = true;
 			return async ({ update }) => {

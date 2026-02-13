@@ -28,7 +28,7 @@ export const actions: Actions = {
 				passwordConfirm,
 				emailVisibility: true
 			});
-			await locals.pb.collection('users').authWithPassword(email, password);
+			await locals.pb.collection('users').requestVerification(email);
 		} catch (err: unknown) {
 			if (err instanceof ClientResponseError) {
 				const emailErrors = err.response?.data?.email;
@@ -43,6 +43,6 @@ export const actions: Actions = {
 			return fail(400, { error: message });
 		}
 
-		throw redirect(303, '/dashboard');
+		return { success: true, email };
 	}
 };
