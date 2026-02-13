@@ -12,6 +12,7 @@ RUN wget -q "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VE
     && chmod +x pocketbase
 
 COPY pb_migrations/ ./pb_migrations/
+COPY pb_hooks/ ./pb_hooks/
 
 EXPOSE ${PORT:-8090}
 
