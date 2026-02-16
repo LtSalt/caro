@@ -12,9 +12,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			filter: `expense.group = "${params.groupId}"`
 		}),
 		locals.pb.collection('settlements').getFullList({
-			filter: `group = "${params.groupId}"`,
-			expand: 'paid_by,paid_to',
-			sort: '-date,-created'
+			filter: `group = "${params.groupId}"`
 		})
 	]);
 
@@ -27,7 +25,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	return {
 		debts,
-		settlements,
 		balances: Object.fromEntries(balances)
 	};
 };

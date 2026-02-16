@@ -9,9 +9,11 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		sort: '-date,-created'
 	});
 
-	const splits = await locals.pb.collection('expense_splits').getFullList({
-		filter: expenses.map((e) => `expense = "${e.id}"`).join(' || ') || '1=0'
-	});
+	const splits = expenses.length > 0
+		? await locals.pb.collection('expense_splits').getFullList({
+				filter: expenses.map((e) => `expense = "${e.id}"`).join(' || ')
+			})
+		: [];
 
 	const splitsByExpense: Record<string, { user: string; amount: number; parts: number | null }[]> = {};
 	for (const split of splits) {
@@ -21,7 +23,21 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		splitsByExpense[split.expense].push({ user: split.user, amount: split.amount, parts: split.parts ?? null });
 	}
 
-	return { expenses, splitsByExpense };
+	// Load which expenses the current user has settled
+	const userId = locals.user?.id;
+	const settledExpenseIds = new Set<string>();
+	if (userId) {
+		const settlements = await locals.pb.collection('settlements').getFullList({
+			filter: `group = "${params.groupId}" && (paid_by = "${userId}" || paid_to = "${userId}")`
+		});
+		for (const s of settlements) {
+			if (s.expense) {
+				settledExpenseIds.add(s.expense);
+			}
+		}
+	}
+
+	return { expenses, splitsByExpense, settledExpenseIds: [...settledExpenseIds] };
 };
 
 export const actions: Actions = {
@@ -196,6 +212,96 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('editExpense error:', err);
 			const message = err instanceof Error ? err.message : 'Failed to update expense.';
+			return fail(400, { error: message });
+		}
+	},
+
+	settleExpense: async ({ request, locals, params }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Not authenticated.' });
+		}
+
+		const data = await request.formData();
+		const expenseId = data.get('expenseId') as string;
+
+		try {
+			const expense = await locals.pb.collection('expenses').getOne(expenseId);
+			const userId = locals.user!.id;
+
+			// Check if already settled
+			const allUserSettlements = await locals.pb.collection('settlements').getFullList({
+				filter: `group = "${params.groupId}" && (paid_by = "${userId}" || paid_to = "${userId}")`
+			});
+			const existing = allUserSettlements.filter((s) => s.expense === expenseId);
+			if (existing.length > 0) {
+				return fail(400, { error: 'This expense has already been settled.' });
+			}
+
+			const splits = await locals.pb.collection('expense_splits').getFullList({
+				filter: `expense = "${expenseId}"`
+			});
+
+			const today = new Date().toISOString().split('T')[0];
+
+			if (expense.paid_by === userId) {
+				// I paid — settle what others owe me
+				for (const split of splits) {
+					if (split.user !== userId) {
+						await locals.pb.collection('settlements').create({
+							group: params.groupId,
+							expense: expenseId,
+							paid_by: split.user,
+							paid_to: userId,
+							amount: split.amount,
+							date: today
+						});
+					}
+				}
+			} else {
+				// Someone else paid — settle my debt
+				const mySplit = splits.find((s) => s.user === userId);
+				if (mySplit) {
+					await locals.pb.collection('settlements').create({
+						group: params.groupId,
+						expense: expenseId,
+						paid_by: userId,
+						paid_to: expense.paid_by,
+						amount: mySplit.amount,
+						date: today
+					});
+				}
+			}
+
+			return { settled: true };
+		} catch (err) {
+			console.error('settleExpense error:', err);
+			const message = err instanceof Error ? err.message : 'Failed to settle expense.';
+			return fail(400, { error: message });
+		}
+	},
+
+	unsettleExpense: async ({ request, locals, params }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Not authenticated.' });
+		}
+
+		const data = await request.formData();
+		const expenseId = data.get('expenseId') as string;
+		const userId = locals.user.id;
+
+		try {
+			const allUserSettlements = await locals.pb.collection('settlements').getFullList({
+				filter: `group = "${params.groupId}" && (paid_by = "${userId}" || paid_to = "${userId}")`
+			});
+			for (const s of allUserSettlements) {
+				if (s.expense === expenseId) {
+					await locals.pb.collection('settlements').delete(s.id);
+				}
+			}
+			return { unsettled: true };
+		} catch (err) {
+			console.error('unsettleExpense error:', err);
+			const message = err instanceof Error ? err.message : 'Failed to unsettle expense.';
 			return fail(400, { error: message });
 		}
 	},

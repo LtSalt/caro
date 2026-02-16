@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { formatCurrency, formatDate } from '$lib/utils';
+	import { formatCurrency } from '$lib/utils';
 	import type { Debt } from '$lib/balance';
 
 	let { data, form } = $props();
 
 	let debts = $derived(data.debts as Debt[]);
-	let settlements = $derived(data.settlements);
 	let group = $derived(data.group);
 	let members = $derived(data.members);
 
@@ -57,28 +56,6 @@
 		{/if}
 	</div>
 
-	{#if settlements.length > 0}
-		<div>
-			<h2 class="mb-3 text-lg font-semibold text-gray-900">Settlement history</h2>
-			<div class="space-y-2">
-				{#each settlements as settlement}
-					<div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
-						<div class="text-sm text-gray-600">
-							<span class="font-medium text-gray-900">{settlement.expand?.paid_by?.name || 'Unknown'}</span>
-							paid
-							<span class="font-medium text-gray-900">{settlement.expand?.paid_to?.name || 'Unknown'}</span>
-						</div>
-						<div class="text-right">
-							<span class="font-semibold text-green-600">
-								{formatCurrency(settlement.amount, group.currency)}
-							</span>
-							<div class="text-xs text-gray-400">{formatDate(settlement.date)}</div>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</div>
-	{/if}
 </div>
 
 <!-- Settlement confirmation modal -->
