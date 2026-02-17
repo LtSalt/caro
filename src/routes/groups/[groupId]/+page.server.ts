@@ -67,8 +67,7 @@ export const actions: Actions = {
 				amount,
 				paid_by,
 				split_type: split_type || 'equal',
-				date,
-				created_by: locals.user.id
+				date
 			});
 
 			if (split_type === 'equal' || !split_type) {

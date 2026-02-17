@@ -25,12 +25,10 @@ export interface Expense extends RecordModel {
 	paid_by: string;
 	split_type: 'equal' | 'exact' | 'percentage';
 	date: string;
-	created_by: string;
 	settled: boolean;
 	settled_at?: string;
 	expand?: {
 		paid_by?: User;
-		created_by?: User;
 	};
 }
 
