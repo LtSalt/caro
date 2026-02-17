@@ -3,6 +3,7 @@
 
 	let { data, form } = $props();
 	let account = $derived(data.account);
+	let showDeleteConfirm = $state(false);
 </script>
 
 <div class="mx-auto max-w-md space-y-8 py-6">
@@ -90,5 +91,35 @@
 				Change password
 			</button>
 		</form>
+	</div>
+
+	<!-- Danger zone -->
+	<div class="rounded-lg border border-red-200 p-4">
+		<h2 class="mb-2 text-lg font-semibold text-red-600">Danger zone</h2>
+		{#if !showDeleteConfirm}
+			<button
+				onclick={() => (showDeleteConfirm = true)}
+				class="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+			>
+				Delete account
+			</button>
+		{:else}
+			<p class="mb-3 text-sm text-gray-600">This will permanently delete your account and remove you from all groups. This action cannot be undone.</p>
+			<form method="POST" action="?/deleteAccount" use:enhance class="flex gap-2">
+				<button
+					type="button"
+					onclick={() => (showDeleteConfirm = false)}
+					class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+				>
+					Cancel
+				</button>
+				<button
+					type="submit"
+					class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+				>
+					Yes, delete account
+				</button>
+			</form>
+		{/if}
 	</div>
 </div>

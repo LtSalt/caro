@@ -36,6 +36,22 @@ export const actions: Actions = {
 		}
 	},
 
+	deleteAccount: async ({ locals, cookies }) => {
+		if (!locals.user) {
+			throw redirect(303, '/login');
+		}
+
+		try {
+			await locals.pb.collection('users').delete(locals.user.id);
+			locals.pb.authStore.clear();
+			cookies.delete('pb_auth', { path: '/' });
+		} catch {
+			return fail(400, { error: 'Failed to delete account.' });
+		}
+
+		throw redirect(303, '/login');
+	},
+
 	changePassword: async ({ request, locals }) => {
 		if (!locals.user) {
 			throw redirect(303, '/login');
