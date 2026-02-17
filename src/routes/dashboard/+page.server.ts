@@ -6,15 +6,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		throw redirect(303, '/login');
 	}
 
-	// Get all group memberships for the current user, expanding the group
-	const memberships = await locals.pb.collection('group_members').getFullList({
-		filter: `user = "${locals.user.id}"`,
-		expand: 'group'
+	const groups = await locals.pb.collection('groups').getFullList({
+		filter: `members ~ "${locals.user.id}"`
 	});
-
-	const groups = memberships
-		.map((m) => m.expand?.group)
-		.filter(Boolean);
 
 	return { groups };
 };

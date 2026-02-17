@@ -11,18 +11,10 @@ export interface Group extends RecordModel {
 	description: string;
 	currency: 'EUR' | 'USD' | 'GBP' | 'CHF';
 	created_by: string;
+	members: string[];
 	expand?: {
 		created_by?: User;
-	};
-}
-
-export interface GroupMember extends RecordModel {
-	group: string;
-	user: string;
-	role: 'owner' | 'member';
-	expand?: {
-		user?: User;
-		group?: Group;
+		members?: User[];
 	};
 }
 
@@ -34,6 +26,8 @@ export interface Expense extends RecordModel {
 	split_type: 'equal' | 'exact' | 'percentage';
 	date: string;
 	created_by: string;
+	settled: boolean;
+	settled_at?: string;
 	expand?: {
 		paid_by?: User;
 		created_by?: User;
@@ -47,17 +41,5 @@ export interface ExpenseSplit extends RecordModel {
 	expand?: {
 		user?: User;
 		expense?: Expense;
-	};
-}
-
-export interface Settlement extends RecordModel {
-	group: string;
-	paid_by: string;
-	paid_to: string;
-	amount: number;
-	date: string;
-	expand?: {
-		paid_by?: User;
-		paid_to?: User;
 	};
 }

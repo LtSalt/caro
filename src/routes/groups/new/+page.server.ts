@@ -27,14 +27,8 @@ export const actions: Actions = {
 				name: name.trim(),
 				description: description?.trim() || '',
 				currency: currency || 'EUR',
-				created_by: locals.user.id
-			});
-
-			// Auto-add creator as owner
-			await locals.pb.collection('group_members').create({
-				group: group.id,
-				user: locals.user.id,
-				role: 'owner'
+				created_by: locals.user.id,
+				members: [locals.user.id]
 			});
 
 			throw redirect(303, `/groups/${group.id}`);

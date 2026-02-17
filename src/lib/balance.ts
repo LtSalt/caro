@@ -6,8 +6,7 @@ export interface Debt {
 
 export function computeNetBalances(
 	expenses: Array<{ id: string; paid_by: string; amount: number }>,
-	splits: Array<{ expense: string; user: string; amount: number }>,
-	settlements: Array<{ paid_by: string; paid_to: string; amount: number }>
+	splits: Array<{ expense: string; user: string; amount: number }>
 ): Map<string, number> {
 	const balances = new Map<string, number>();
 
@@ -22,11 +21,6 @@ export function computeNetBalances(
 		for (const split of expenseSplits) {
 			add(split.user, -split.amount);
 		}
-	}
-
-	for (const settlement of settlements) {
-		add(settlement.paid_by, settlement.amount);
-		add(settlement.paid_to, -settlement.amount);
 	}
 
 	for (const [userId, amount] of balances) {

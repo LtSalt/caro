@@ -32,18 +32,15 @@ export const actions: Actions = {
 			const targetUser = users[0];
 
 			// Check if already a member
-			const existing = await locals.pb.collection('group_members').getFullList({
-				filter: `group = "${params.groupId}" && user = "${targetUser.id}"`
-			});
+			const group = await locals.pb.collection('groups').getOne(params.groupId);
+			const currentMembers = group.members as string[];
 
-			if (existing.length > 0) {
+			if (currentMembers.includes(targetUser.id)) {
 				return fail(400, { error: 'User is already a member.' });
 			}
 
-			await locals.pb.collection('group_members').create({
-				group: params.groupId,
-				user: targetUser.id,
-				role: 'member'
+			await locals.pb.collection('groups').update(params.groupId, {
+				members: [...currentMembers, targetUser.id]
 			});
 
 			return { memberAdded: true };
@@ -61,17 +58,21 @@ export const actions: Actions = {
 		}
 
 		const data = await request.formData();
-		const membershipId = data.get('membershipId') as string;
+		const userId = data.get('userId') as string;
 
 		try {
-			const membership = await locals.pb.collection('group_members').getOne(membershipId);
+			const group = await locals.pb.collection('groups').getOne(params.groupId);
 
 			// Don't allow removing the owner
-			if (membership.role === 'owner') {
+			if (group.created_by === userId) {
 				return fail(400, { error: 'Cannot remove the group owner.' });
 			}
 
-			await locals.pb.collection('group_members').delete(membershipId);
+			const currentMembers = group.members as string[];
+			await locals.pb.collection('groups').update(params.groupId, {
+				members: currentMembers.filter((id: string) => id !== userId)
+			});
+
 			return { memberRemoved: true };
 		} catch (err: unknown) {
 			if (err && typeof err === 'object' && 'status' in err) {

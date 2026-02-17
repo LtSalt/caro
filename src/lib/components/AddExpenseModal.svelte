@@ -36,7 +36,7 @@
 	let selectedUsers = $state<string[]>(
 		isEditing && expenseSplits.length > 0
 			? expenseSplits.map((s) => s.user)
-			: members.map((m) => m['user'] as string)
+			: members.map((m) => m.id)
 	);
 
 	// Build a lookup of existing split amounts by user
@@ -48,9 +48,8 @@
 	function initAmounts(): Record<string, string> {
 		const result: Record<string, string> = {};
 		for (const m of members) {
-			const userId = m['user'] as string;
-			const existing = existingSplitAmounts[userId];
-			result[userId] = existing !== undefined ? String(existing) : '';
+			const existing = existingSplitAmounts[m.id];
+			result[m.id] = existing !== undefined ? String(existing) : '';
 		}
 		return result;
 	}
@@ -63,9 +62,8 @@
 			}
 		}
 		for (const m of members) {
-			const userId = m['user'] as string;
-			if (!(userId in result)) {
-				result[userId] = '1';
+			if (!(m.id in result)) {
+				result[m.id] = '1';
 			}
 		}
 		return result;
@@ -110,11 +108,6 @@
 		} else {
 			selectedUsers = [...selectedUsers, userId];
 		}
-	}
-
-	function getMemberUser(member: RecordModel) {
-		const expand = member.expand as Record<string, Record<string, string>> | undefined;
-		return expand?.user;
 	}
 
 	function formatDateValue(d: string | undefined): string {
@@ -199,10 +192,8 @@
 					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none"
 				>
 					{#each members as member}
-						{@const userId = member['user'] as string}
-						{@const expandUser = getMemberUser(member)}
-						<option value={userId} selected={isEditing ? userId === expense?.paid_by : userId === currentUserId}>
-							{expandUser?.name || expandUser?.email || 'Unknown'}
+						<option value={member.id} selected={isEditing ? member.id === expense?.paid_by : member.id === currentUserId}>
+							{member.name || member.email || 'Unknown'}
 						</option>
 					{/each}
 				</select>
@@ -240,44 +231,42 @@
 				<legend class="mb-1 block text-sm font-medium text-gray-700">Split between</legend>
 				<div class="space-y-1">
 					{#each members as member}
-						{@const userId = member['user'] as string}
-						{@const expandUser = getMemberUser(member)}
-						{@const userName = expandUser?.name || expandUser?.email || 'Unknown'}
+						{@const userName = member.name || member.email || 'Unknown'}
 						<label class="flex items-center gap-2">
 							<input
 								type="checkbox"
 								name="split_users"
-								value={userId}
-								checked={selectedUsers.includes(userId)}
-								onchange={() => toggleUser(userId)}
+								value={member.id}
+								checked={selectedUsers.includes(member.id)}
+								onchange={() => toggleUser(member.id)}
 								class="rounded border-gray-300"
 							/>
 							<span class="flex-1 text-sm text-gray-700">{userName}</span>
-							{#if splitType === 'parts' && selectedUsers.includes(userId)}
+							{#if splitType === 'parts' && selectedUsers.includes(member.id)}
 								<input
 									type="number"
-									name="parts_{userId}"
+									name="parts_{member.id}"
 									min="1"
-									bind:value={userParts[userId]}
+									bind:value={userParts[member.id]}
 									class="w-16 rounded border border-gray-300 px-2 py-1 text-right text-sm"
 								/>
 								<span class="text-xs text-gray-400">parts</span>
 							{/if}
-							{#if splitType === 'exact' && selectedUsers.includes(userId)}
+							{#if splitType === 'exact' && selectedUsers.includes(member.id)}
 								<span class="text-xs text-gray-500">{group.currency}</span>
 								<input
 									type="number"
-									name="amount_{userId}"
+									name="amount_{member.id}"
 									min="0"
 									step="0.01"
-									bind:value={userAmounts[userId]}
+									bind:value={userAmounts[member.id]}
 									placeholder="0.00"
 									class="w-20 rounded border border-gray-300 px-2 py-1 text-right text-sm"
 								/>
 							{/if}
-							{#if splitType !== 'exact' && selectedUsers.includes(userId) && computedShares[userId] !== undefined}
+							{#if splitType !== 'exact' && selectedUsers.includes(member.id) && computedShares[member.id] !== undefined}
 								<span class="text-xs text-gray-400">&middot;</span>
-								<span class="text-xs text-gray-500">{formatCurrency(computedShares[userId], group.currency)}</span>
+								<span class="text-xs text-gray-500">{formatCurrency(computedShares[member.id], group.currency)}</span>
 							{/if}
 						</label>
 					{/each}

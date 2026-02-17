@@ -30,14 +30,14 @@
 			{#each members as member}
 				<div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3">
 					<div>
-						<span class="font-medium text-gray-900">{member.expand?.user?.name || member.expand?.user?.email}</span>
-						{#if member.role === 'owner'}
+						<span class="font-medium text-gray-900">{member.name || member.email}</span>
+						{#if member.id === group.created_by}
 							<span class="ml-2 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Owner</span>
 						{/if}
 					</div>
-					{#if isOwner && member.role !== 'owner'}
+					{#if isOwner && member.id !== group.created_by}
 						<form method="POST" action="?/removeMember" use:enhance>
-							<input type="hidden" name="membershipId" value={member.id} />
+							<input type="hidden" name="userId" value={member.id} />
 							<button
 								type="submit"
 								class="text-sm text-red-500 hover:text-red-700"
