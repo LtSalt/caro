@@ -27,6 +27,7 @@ export interface Expense extends RecordModel {
 	date: string;
 	settled: boolean;
 	settled_at?: string;
+	deleted_at?: string;
 	expand?: {
 		paid_by?: User;
 	};

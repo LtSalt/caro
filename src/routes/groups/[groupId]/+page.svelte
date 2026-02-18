@@ -10,6 +10,7 @@
 	let deletingExpenseId = $state<string | null>(null);
 
 	let expenses = $derived(data.expenses);
+	let deletedExpenses = $derived(data.deletedExpenses);
 	let splitsByExpense = $derived(data.splitsByExpense);
 	let group = $derived(data.group);
 	let members = $derived(data.members);
@@ -18,6 +19,10 @@
 
 	let activeExpenses = $derived(expenses.filter((e) => !settledExpenseIds.has(e.id)));
 	let settledExpenses = $derived(expenses.filter((e) => settledExpenseIds.has(e.id)));
+
+	function daysUntilPurge(deletedAt: string): number {
+		return Math.max(0, 30 - Math.floor((Date.now() - new Date(deletedAt).getTime()) / 86400000));
+	}
 
 	function getUserShare(expense: RecordModel): number | null {
 		const splits = splitsByExpense[expense.id];
@@ -174,6 +179,43 @@
 				</div>
 			</div>
 		{/if}
+
+		{#if deletedExpenses.length > 0}
+			<div class="mt-6">
+				<h3 class="mb-2 text-sm font-medium text-gray-400">Deleted</h3>
+				<div class="space-y-2">
+					{#each deletedExpenses as expense}
+						<div class="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+							<div class="flex-1 opacity-60">
+								<div class="font-medium text-gray-500 dark:text-gray-400">{expense.description}</div>
+								<div class="text-sm text-gray-400 dark:text-gray-500">
+									Paid by {expense.expand?.paid_by?.name || 'Unknown'} &middot; {formatDate(expense.date)}
+								</div>
+								<div class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+									Deleted &middot; {daysUntilPurge(expense.deleted_at)} days until permanent removal
+								</div>
+							</div>
+							<form
+								method="POST"
+								action="?/restoreExpense"
+								use:enhance={() => async ({ update }) => { await update(); }}
+							>
+								<input type="hidden" name="expenseId" value={expense.id} />
+								<button
+									type="submit"
+									class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-green-700 dark:hover:bg-gray-800 dark:hover:text-green-600"
+									title="Restore"
+								>
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+									</svg>
+								</button>
+							</form>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -206,7 +248,7 @@
 	>
 		<div class="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
 			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Delete expense?</h3>
-			<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">This action cannot be undone.</p>
+			<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">The expense will be moved to the deleted section and permanently removed after 30 days.</p>
 			<div class="mt-4 flex gap-2">
 				<button
 					onclick={() => (deletingExpenseId = null)}

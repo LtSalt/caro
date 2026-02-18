@@ -3,15 +3,26 @@ import type { Actions, PageServerLoad } from './$types';
 import { equalSplit } from '$lib/utils';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	const expenses = await locals.pb.collection('expenses').getFullList({
-		filter: `group = "${params.groupId}"`,
-		expand: 'paid_by',
-		sort: '-date,-created'
-	});
+	const [expenses, deletedExpenses] = await Promise.all([
+		locals.pb.collection('expenses').getFullList({
+			filter: `group = "${params.groupId}" && deleted_at = ""`,
+			expand: 'paid_by',
+			sort: '-date,-created',
+			requestKey: 'expenses-active'
+		}),
+		locals.pb.collection('expenses').getFullList({
+			filter: `group = "${params.groupId}" && deleted_at != ""`,
+			expand: 'paid_by',
+			sort: '-deleted_at',
+			requestKey: 'expenses-deleted'
+		})
+	]);
 
-	const splits = expenses.length > 0
+	const allExpenses = [...expenses, ...deletedExpenses];
+
+	const splits = allExpenses.length > 0
 		? await locals.pb.collection('expense_splits').getFullList({
-				filter: expenses.map((e) => `expense = "${e.id}"`).join(' || ')
+				filter: allExpenses.map((e) => `expense = "${e.id}"`).join(' || ')
 			})
 		: [];
 
@@ -25,7 +36,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const settledExpenseIds = expenses.filter((e) => e.settled).map((e) => e.id);
 
-	return { expenses, splitsByExpense, settledExpenseIds };
+	return { expenses, deletedExpenses, splitsByExpense, settledExpenseIds };
 };
 
 export const actions: Actions = {
@@ -254,10 +265,28 @@ export const actions: Actions = {
 		const expenseId = data.get('expenseId') as string;
 
 		try {
-			await locals.pb.collection('expenses').delete(expenseId);
+			await locals.pb.collection('expenses').update(expenseId, {
+				deleted_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
+			});
 			return { deleted: true };
 		} catch {
 			return fail(400, { error: 'Failed to delete expense.' });
+		}
+	},
+
+	restoreExpense: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Not authenticated.' });
+		}
+
+		const data = await request.formData();
+		const expenseId = data.get('expenseId') as string;
+
+		try {
+			await locals.pb.collection('expenses').update(expenseId, { deleted_at: null });
+			return { restored: true };
+		} catch {
+			return fail(400, { error: 'Failed to restore expense.' });
 		}
 	}
 };
