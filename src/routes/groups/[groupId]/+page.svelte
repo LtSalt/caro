@@ -8,7 +8,6 @@
 	let showAddModal = $state(false);
 	let editingExpense = $state<RecordModel | null>(null);
 	let deletingExpenseId = $state<string | null>(null);
-	let settlingExpense = $state<RecordModel | null>(null);
 
 	let expenses = $derived(data.expenses);
 	let splitsByExpense = $derived(data.splitsByExpense);
@@ -81,15 +80,23 @@
 						</span>
 						{#each [getUserShare(expense)] as share}
 							{#if share !== null && share !== 0}
-								<button
-									onclick={(e) => { e.stopPropagation(); settlingExpense = expense; }}
-									class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-green-700 dark:hover:bg-gray-800 dark:hover:text-green-600"
-									title="Settle"
+								<form
+									method="POST"
+									action="?/settleExpense"
+									use:enhance={() => async ({ update }) => { await update(); }}
 								>
-									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-									</svg>
-								</button>
+									<input type="hidden" name="expenseId" value={expense.id} />
+									<button
+										type="submit"
+										onclick={(e) => e.stopPropagation()}
+										class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-green-700 dark:hover:bg-gray-800 dark:hover:text-green-600"
+										title="Settle"
+									>
+										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+										</svg>
+									</button>
+								</form>
 							{/if}
 						{/each}
 						<button
@@ -188,56 +195,6 @@
 		expenseSplits={splitsByExpense[editingExpense.id] ?? []}
 		onclose={() => (editingExpense = null)}
 	/>
-{/if}
-
-{#if settlingExpense}
-	{@const share = getUserShare(settlingExpense)}
-	{@const payer = settlingExpense.expand?.paid_by}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-		onclick={(e) => { if (e.target === e.currentTarget) settlingExpense = null; }}
-		onkeydown={() => {}}
-	>
-		<div class="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
-			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Settle expense?</h3>
-			{#if share !== null}
-				<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-					{#if share < 0}
-						Mark your debt of <strong>{formatCurrency(Math.abs(share), group.currency)}</strong> to {payer?.name || 'Unknown'} as settled.
-					{:else}
-						Mark <strong>{formatCurrency(share, group.currency)}</strong> owed to you for this expense as settled.
-					{/if}
-				</p>
-			{/if}
-			<div class="mt-4 flex gap-2">
-				<button
-					onclick={() => (settlingExpense = null)}
-					class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-				>
-					Cancel
-				</button>
-				<form
-					method="POST"
-					action="?/settleExpense"
-					use:enhance={() => {
-						return async ({ update }) => {
-							settlingExpense = null;
-							await update();
-						};
-					}}
-				>
-					<input type="hidden" name="expenseId" value={settlingExpense.id} />
-					<button
-						type="submit"
-						class="rounded-lg bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800"
-					>
-						Settle
-					</button>
-				</form>
-			</div>
-		</div>
-	</div>
 {/if}
 
 {#if deletingExpenseId}
