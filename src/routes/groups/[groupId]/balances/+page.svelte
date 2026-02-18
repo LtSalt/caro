@@ -24,7 +24,7 @@
 			<button
 				onclick={() => (showSettleAllModal = true)}
 				disabled={debts.length === 0}
-				class="rounded-lg px-4 py-2 text-sm {debts.length > 0 ? 'cursor-pointer bg-green-600 text-white hover:bg-green-700' : 'cursor-default bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-500'}"
+				class="rounded-lg px-4 py-2 text-sm {debts.length > 0 ? 'cursor-pointer bg-green-700 text-white hover:bg-green-800' : 'cursor-default bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-500'}"
 			>
 				Settle
 			</button>
@@ -87,7 +87,7 @@
 				>
 					<button
 						type="submit"
-						class="w-full rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+						class="w-full rounded-lg bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800"
 					>
 						Settle
 					</button>

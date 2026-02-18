@@ -69,7 +69,7 @@
 						</div>
 						{#each [getUserShare(expense)] as share}
 							{#if share !== null && share !== 0}
-								<div class="mt-0.5 text-xs {share > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+								<div class="mt-0.5 text-xs {share > 0 ? 'text-green-700 dark:text-green-600' : 'text-red-600 dark:text-red-400'}">
 									{share > 0 ? `You get back ${formatCurrency(share, group.currency)}` : `You owe ${formatCurrency(Math.abs(share), group.currency)}`}
 								</div>
 							{/if}
@@ -83,7 +83,7 @@
 							{#if share !== null && share !== 0}
 								<button
 									onclick={(e) => { e.stopPropagation(); settlingExpense = expense; }}
-									class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-green-600 dark:hover:bg-gray-800 dark:hover:text-green-400"
+									class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-green-700 dark:hover:bg-gray-800 dark:hover:text-green-600"
 									title="Settle"
 								>
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,7 +144,7 @@
 									<button
 										type="submit"
 										onclick={(e) => e.stopPropagation()}
-										class="rounded p-1 text-green-500 hover:bg-gray-100 hover:text-gray-400 dark:hover:bg-gray-800"
+										class="rounded p-1 text-green-700 hover:bg-gray-100 hover:text-gray-400 dark:text-green-600 dark:hover:bg-gray-800"
 										title="Unsettle"
 									>
 										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,7 +230,7 @@
 					<input type="hidden" name="expenseId" value={settlingExpense.id} />
 					<button
 						type="submit"
-						class="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+						class="rounded-lg bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800"
 					>
 						Settle
 					</button>
