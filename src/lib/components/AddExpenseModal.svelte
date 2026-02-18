@@ -122,10 +122,10 @@
 	onclick={(e) => { if (e.target === e.currentTarget) onclose(); }}
 	onkeydown={() => {}}
 >
-	<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+	<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
 		<div class="mb-4 flex items-center justify-between">
-			<h2 class="text-lg font-semibold text-gray-900">{isEditing ? 'Edit expense' : 'Add expense'}</h2>
-			<button onclick={onclose} class="text-gray-400 hover:text-gray-600" aria-label="Close">
+			<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{isEditing ? 'Edit expense' : 'Add expense'}</h2>
+			<button onclick={onclose} class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close">
 				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 				</svg>
@@ -133,7 +133,7 @@
 		</div>
 
 		{#if error}
-			<div class="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+			<div class="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">{error}</div>
 		{/if}
 
 		<form
@@ -160,19 +160,19 @@
 			{/if}
 
 			<label class="mb-3 block">
-				<span class="mb-1 block text-sm font-medium text-gray-700">Description</span>
+				<span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Description</span>
 				<input
 					type="text"
 					name="description"
 					required
 					placeholder="e.g. Dinner"
 					value={expense?.description ?? ''}
-					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none"
+					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-gray-400"
 				/>
 			</label>
 
 			<label class="mb-3 block">
-				<span class="mb-1 block text-sm font-medium text-gray-700">Amount ({group.currency})</span>
+				<span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Amount ({group.currency})</span>
 				<input
 					type="number"
 					name="amount"
@@ -181,15 +181,15 @@
 					step="0.01"
 					placeholder="0.00"
 					bind:value={totalAmount}
-					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none"
+					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-gray-400"
 				/>
 			</label>
 
 			<label class="mb-3 block">
-				<span class="mb-1 block text-sm font-medium text-gray-700">Paid by</span>
+				<span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Paid by</span>
 				<select
 					name="paid_by"
-					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none"
+					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-gray-400"
 				>
 					{#each members as member}
 						<option value={member.id} selected={isEditing ? member.id === expense?.paid_by : member.id === currentUserId}>
@@ -200,26 +200,26 @@
 			</label>
 
 			<label class="mb-3 block">
-				<span class="mb-1 block text-sm font-medium text-gray-700">Date</span>
+				<span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Date</span>
 				<input
 					type="date"
 					name="date"
 					required
 					value={formatDateValue(expense?.date)}
-					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none"
+					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-gray-400"
 				/>
 			</label>
 
 			<input type="hidden" name="split_type" value={splitType} />
 
 			<fieldset class="mb-3">
-				<legend class="mb-1 block text-sm font-medium text-gray-700">Split type</legend>
+				<legend class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Split type</legend>
 				<div class="flex gap-2">
 					{#each [['equal', 'Equal'], ['parts', 'By parts'], ['exact', 'Exact amounts']] as [value, label]}
 						<button
 							type="button"
 							onclick={() => (splitType = value)}
-							class="rounded-lg border px-3 py-1.5 text-sm {splitType === value ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}"
+							class="rounded-lg border px-3 py-1.5 text-sm {splitType === value ? 'border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900' : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}"
 						>
 							{label}
 						</button>
@@ -228,7 +228,7 @@
 			</fieldset>
 
 			<fieldset class="mb-3">
-				<legend class="mb-1 block text-sm font-medium text-gray-700">Split between</legend>
+				<legend class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Split between</legend>
 				<div class="space-y-1">
 					{#each members as member}
 						{@const userName = member.name || member.email || 'Unknown'}
@@ -239,21 +239,21 @@
 								value={member.id}
 								checked={selectedUsers.includes(member.id)}
 								onchange={() => toggleUser(member.id)}
-								class="rounded border-gray-300"
+								class="rounded border-gray-300 dark:border-gray-600"
 							/>
-							<span class="flex-1 text-sm text-gray-700">{userName}</span>
+							<span class="flex-1 text-sm text-gray-700 dark:text-gray-300">{userName}</span>
 							{#if splitType === 'parts' && selectedUsers.includes(member.id)}
 								<input
 									type="number"
 									name="parts_{member.id}"
 									min="1"
 									bind:value={userParts[member.id]}
-									class="w-16 rounded border border-gray-300 px-2 py-1 text-right text-sm"
+									class="w-16 rounded border border-gray-300 px-2 py-1 text-right text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
 								/>
 								<span class="text-xs text-gray-400">parts</span>
 							{/if}
 							{#if splitType === 'exact' && selectedUsers.includes(member.id)}
-								<span class="text-xs text-gray-500">{group.currency}</span>
+								<span class="text-xs text-gray-500 dark:text-gray-400">{group.currency}</span>
 								<input
 									type="number"
 									name="amount_{member.id}"
@@ -261,12 +261,12 @@
 									step="0.01"
 									bind:value={userAmounts[member.id]}
 									placeholder="0.00"
-									class="w-20 rounded border border-gray-300 px-2 py-1 text-right text-sm"
+									class="w-20 rounded border border-gray-300 px-2 py-1 text-right text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
 								/>
 							{/if}
 							{#if splitType !== 'exact' && selectedUsers.includes(member.id) && computedShares[member.id] !== undefined}
 								<span class="text-xs text-gray-400">&middot;</span>
-								<span class="text-xs text-gray-500">{formatCurrency(computedShares[member.id], group.currency)}</span>
+								<span class="text-xs text-gray-500 dark:text-gray-400">{formatCurrency(computedShares[member.id], group.currency)}</span>
 							{/if}
 						</label>
 					{/each}
@@ -277,14 +277,14 @@
 				<button
 					type="button"
 					onclick={onclose}
-					class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+					class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
 				>
 					Cancel
 				</button>
 				<button
 					type="submit"
 					disabled={loading}
-					class="flex-1 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800 disabled:opacity-50"
+					class="flex-1 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
 				>
 					{#if loading}
 						{isEditing ? 'Saving...' : 'Adding...'}

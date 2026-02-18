@@ -6,16 +6,16 @@
 </script>
 
 <div class="mx-auto max-w-sm py-12">
-	<h1 class="mb-6 text-2xl font-bold text-gray-900">Sign in</h1>
+	<h1 class="mb-6 text-2xl font-bold text-gray-900 dark:text-gray-100">Sign in</h1>
 
 	{#if form?.resent}
-		<div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
+		<div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800 dark:bg-green-900/30 dark:text-green-300">
 			Verification email sent to <strong>{form.email}</strong>. Check your inbox.
 		</div>
 	{/if}
 
 	{#if form?.error}
-		<div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+		<div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
 			{form.error}
 			{#if 'unverified' in form}
 				<form method="POST" action="?/resend" class="mt-2" use:enhance>
@@ -38,35 +38,35 @@
 		}}
 	>
 		<label class="mb-4 block">
-			<span class="mb-1 block text-sm font-medium text-gray-700">Email</span>
+			<span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Email</span>
 			<input
 				type="email"
 				name="email"
 				required
-				class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none"
+				class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-gray-400"
 			/>
 		</label>
 
 		<label class="mb-6 block">
-			<span class="mb-1 block text-sm font-medium text-gray-700">Password</span>
+			<span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Password</span>
 			<input
 				type="password"
 				name="password"
 				required
-				class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none"
+				class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-gray-400"
 			/>
 		</label>
 
 		<button
 			type="submit"
 			disabled={loading}
-			class="w-full rounded-lg bg-gray-900 px-4 py-2 text-white hover:bg-gray-800 disabled:opacity-50"
+			class="w-full rounded-lg bg-gray-900 px-4 py-2 text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
 		>
 			{loading ? 'Signing in...' : 'Sign in'}
 		</button>
 	</form>
 
-	<p class="mt-4 text-center text-sm text-gray-600">
-		Don't have an account? <a href="/register" class="text-gray-900 underline">Sign up</a>
+	<p class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+		Don't have an account? <a href="/register" class="text-gray-900 underline dark:text-gray-100">Sign up</a>
 	</p>
 </div>

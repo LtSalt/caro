@@ -16,23 +16,23 @@
 
 <div class="mt-4 space-y-6">
 	<div>
-		<h2 class="mb-3 text-lg font-semibold text-gray-900">Who owes whom</h2>
+		<h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">Who owes whom</h2>
 
 		{#if debts.length === 0}
-			<div class="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center">
-				<p class="text-gray-500">All settled up!</p>
+			<div class="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
+				<p class="text-gray-500 dark:text-gray-400">All settled up!</p>
 			</div>
 		{:else}
 			<div class="space-y-2">
 				{#each debts as debt}
-					<div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
+					<div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
 						<div>
-							<span class="font-medium text-gray-900">{getUserName(debt.from)}</span>
-							<span class="text-gray-500"> owes </span>
-							<span class="font-medium text-gray-900">{getUserName(debt.to)}</span>
+							<span class="font-medium text-gray-900 dark:text-gray-100">{getUserName(debt.from)}</span>
+							<span class="text-gray-500 dark:text-gray-400"> owes </span>
+							<span class="font-medium text-gray-900 dark:text-gray-100">{getUserName(debt.to)}</span>
 						</div>
 						<div class="flex items-center gap-3">
-							<span class="font-semibold text-red-600">
+							<span class="font-semibold text-red-600 dark:text-red-400">
 								{formatCurrency(debt.amount, group.currency)}
 							</span>
 						</div>
