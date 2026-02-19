@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { equalSplit } from '$lib/utils';
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const data = await parent();
@@ -73,6 +74,33 @@ export const actions: Actions = {
 				members: currentMembers.filter((id: string) => id !== userId)
 			});
 
+			// Clean up open expense splits
+			const openExpenses = await locals.pb.collection('expenses').getFullList({
+				filter: `group = "${params.groupId}" && settled = false && deleted_at = ""`
+			});
+
+			for (const expense of openExpenses) {
+				const splits = await locals.pb.collection('expense_splits').getFullList({
+					filter: `expense = "${expense.id}"`
+				});
+
+				const removedSplit = splits.find((s) => s.user === userId);
+				if (!removedSplit) continue;
+
+				const remainingSplits = splits.filter((s) => s.user !== userId);
+				if (remainingSplits.length === 0) continue;
+
+				const extraAmounts = equalSplit(removedSplit.amount, remainingSplits.length);
+				for (let i = 0; i < remainingSplits.length; i++) {
+					await locals.pb.collection('expense_splits').update(remainingSplits[i].id, {
+						amount: Math.round((remainingSplits[i].amount + extraAmounts[i]) * 100) / 100
+					});
+				}
+
+				await locals.pb.collection('expense_splits').delete(removedSplit.id);
+				await locals.pb.collection('expenses').update(expense.id, { split_type: 'exact' });
+			}
+
 			return { memberRemoved: true };
 		} catch (err: unknown) {
 			if (err && typeof err === 'object' && 'status' in err) {
@@ -104,6 +132,60 @@ export const actions: Actions = {
 		} catch {
 			return fail(400, { error: 'Failed to update group.' });
 		}
+	},
+
+	leaveGroup: async ({ locals, params }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Not authenticated.' });
+		}
+
+		try {
+			const group = await locals.pb.collection('groups').getOne(params.groupId);
+
+			if (group.created_by === locals.user.id) {
+				return fail(400, { error: 'You must transfer group ownership before leaving.' });
+			}
+
+			const currentMembers = group.members as string[];
+			await locals.pb.collection('groups').update(params.groupId, {
+				members: currentMembers.filter((id: string) => id !== locals.user!.id)
+			});
+
+			// Clean up open expense splits
+			const openExpenses = await locals.pb.collection('expenses').getFullList({
+				filter: `group = "${params.groupId}" && settled = false && deleted_at = ""`
+			});
+
+			for (const expense of openExpenses) {
+				const splits = await locals.pb.collection('expense_splits').getFullList({
+					filter: `expense = "${expense.id}"`
+				});
+
+				const leavingSplit = splits.find((s) => s.user === locals.user!.id);
+				if (!leavingSplit) continue;
+
+				const remainingSplits = splits.filter((s) => s.user !== locals.user!.id);
+				if (remainingSplits.length === 0) continue;
+
+				// Distribute leaving user's amount equally among remaining users
+				const extraAmounts = equalSplit(leavingSplit.amount, remainingSplits.length);
+				for (let i = 0; i < remainingSplits.length; i++) {
+					await locals.pb.collection('expense_splits').update(remainingSplits[i].id, {
+						amount: Math.round((remainingSplits[i].amount + extraAmounts[i]) * 100) / 100
+					});
+				}
+
+				await locals.pb.collection('expense_splits').delete(leavingSplit.id);
+				await locals.pb.collection('expenses').update(expense.id, { split_type: 'exact' });
+			}
+		} catch (err: unknown) {
+			if (err && typeof err === 'object' && 'status' in err) {
+				throw err;
+			}
+			return fail(400, { error: 'Failed to leave group.' });
+		}
+
+		throw redirect(303, '/dashboard');
 	},
 
 	deleteGroup: async ({ locals, params }) => {

@@ -1,6 +1,36 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { equalSplit } from '$lib/utils';
+import type PocketBase from 'pocketbase';
+
+async function removeNonMemberSplits(pb: PocketBase, expenseId: string, groupId: string) {
+	const group = await pb.collection('groups').getOne(groupId);
+	const memberIds = group.members as string[];
+
+	const splits = await pb.collection('expense_splits').getFullList({
+		filter: `expense = "${expenseId}"`
+	});
+
+	const orphanedSplits = splits.filter((s) => !memberIds.includes(s.user));
+	if (orphanedSplits.length === 0) return;
+
+	const remainingSplits = splits.filter((s) => memberIds.includes(s.user));
+	if (remainingSplits.length === 0) return;
+
+	for (const orphan of orphanedSplits) {
+		const extraAmounts = equalSplit(orphan.amount, remainingSplits.length);
+		for (let i = 0; i < remainingSplits.length; i++) {
+			remainingSplits[i].amount = Math.round((remainingSplits[i].amount + extraAmounts[i]) * 100) / 100;
+		}
+		await pb.collection('expense_splits').delete(orphan.id);
+	}
+
+	for (const split of remainingSplits) {
+		await pb.collection('expense_splits').update(split.id, { amount: split.amount });
+	}
+
+	await pb.collection('expenses').update(expenseId, { split_type: 'exact' });
+}
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	const [expenses, deletedExpenses] = await Promise.all([
@@ -235,7 +265,7 @@ export const actions: Actions = {
 		}
 	},
 
-	unsettleExpense: async ({ request, locals }) => {
+	unsettleExpense: async ({ request, locals, params }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Not authenticated.' });
 		}
@@ -248,6 +278,9 @@ export const actions: Actions = {
 				settled: false,
 				settled_at: ''
 			});
+
+			await removeNonMemberSplits(locals.pb, expenseId, params.groupId);
+
 			return { unsettled: true };
 		} catch (err) {
 			console.error('unsettleExpense error:', err);

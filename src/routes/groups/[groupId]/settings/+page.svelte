@@ -9,6 +9,7 @@
 	let isOwner = $derived(group.created_by === currentUserId);
 
 	let showDeleteConfirm = $state(false);
+	let showLeaveConfirm = $state(false);
 </script>
 
 <div class="mt-4 space-y-6">
@@ -40,11 +41,39 @@
 							<input type="hidden" name="userId" value={member.id} />
 							<button
 								type="submit"
-								class="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+								class="cursor-pointer text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
 							>
 								Remove
 							</button>
 						</form>
+					{:else if !isOwner && member.id === currentUserId}
+						{#if !showLeaveConfirm}
+							<button
+								onclick={() => (showLeaveConfirm = true)}
+								class="cursor-pointer text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+							>
+								Leave
+							</button>
+						{:else}
+							<div class="flex items-center gap-2">
+								<span class="text-sm text-gray-600 dark:text-gray-400">Leave group?</span>
+								<button
+									type="button"
+									onclick={() => (showLeaveConfirm = false)}
+									class="cursor-pointer text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+								>
+									Cancel
+								</button>
+								<form method="POST" action="?/leaveGroup" use:enhance>
+									<button
+										type="submit"
+										class="cursor-pointer text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+									>
+										Yes, leave
+									</button>
+								</form>
+							</div>
+						{/if}
 					{/if}
 				</div>
 			{/each}
