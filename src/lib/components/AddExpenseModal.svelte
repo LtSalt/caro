@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { formatCurrency } from '$lib/utils';
+	import { SUPPORTED_CURRENCIES } from '$lib/types';
 	import type { RecordModel } from 'pocketbase';
 
 	interface Split {
@@ -33,6 +34,7 @@
 
 	let splitType = $state(initialSplitType());
 	let totalAmount = $state(expense?.amount ?? 0);
+	let selectedCurrency = $state(group.currency as string);
 	let selectedUsers = $state<string[]>(
 		isEditing && expenseSplits.length > 0
 			? expenseSplits.map((s) => s.user)
@@ -171,19 +173,33 @@
 				/>
 			</label>
 
-			<label class="mb-3 block">
-				<span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Amount ({group.currency})</span>
-				<input
-					type="number"
-					name="amount"
-					required
-					min="0.01"
-					step="0.01"
-					placeholder="0.00"
-					bind:value={totalAmount}
-					class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-gray-400"
-				/>
-			</label>
+			<div class="mb-3">
+				<span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</span>
+				<div class="flex gap-2">
+					<input
+						type="number"
+						name="amount"
+						required
+						min="0.01"
+						step="0.01"
+						placeholder="0.00"
+						bind:value={totalAmount}
+						class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-gray-400"
+					/>
+					<select
+						name="currency"
+						bind:value={selectedCurrency}
+						class="rounded-lg border border-gray-300 px-3 py-2 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-gray-400"
+					>
+						{#each SUPPORTED_CURRENCIES as cur}
+							<option value={cur}>{cur}</option>
+						{/each}
+					</select>
+				</div>
+				{#if selectedCurrency !== group.currency}
+					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Will be converted to {group.currency} when saved</p>
+				{/if}
+			</div>
 
 			<label class="mb-3 block">
 				<span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Paid by</span>

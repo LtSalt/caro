@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { equalSplit } from '$lib/utils';
+import { convertCurrency } from '$lib/currency';
 import type PocketBase from 'pocketbase';
 
 async function removeNonMemberSplits(pb: PocketBase, expenseId: string, groupId: string) {
@@ -77,13 +78,14 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 		const description = data.get('description') as string;
-		const amount = parseFloat(data.get('amount') as string);
+		const rawAmount = parseFloat(data.get('amount') as string);
+		const currency = (data.get('currency') as string) || '';
 		const paid_by = data.get('paid_by') as string;
 		const split_type = data.get('split_type') as string;
 		const date = data.get('date') as string;
 		const splitUsers = data.getAll('split_users') as string[];
 
-		if (!description?.trim() || !amount || amount <= 0 || !paid_by || !date) {
+		if (!description?.trim() || !rawAmount || rawAmount <= 0 || !paid_by || !date) {
 			return fail(400, { error: 'All fields are required.' });
 		}
 
@@ -96,12 +98,15 @@ export const actions: Actions = {
 				(sum, userId) => sum + (parseFloat(data.get(`amount_${userId}`) as string) || 0),
 				0
 			);
-			if (Math.round(total * 100) !== Math.round(amount * 100)) {
+			if (Math.round(total * 100) !== Math.round(rawAmount * 100)) {
 				return fail(400, { error: 'Split amounts must add up to the total expense amount.' });
 			}
 		}
 
 		try {
+			const group = await locals.pb.collection('groups').getOne(params.groupId);
+			const amount = await convertCurrency(rawAmount, currency, group.currency, date);
+
 			const expense = await locals.pb.collection('expenses').create({
 				group: params.groupId,
 				description: description.trim(),
@@ -135,8 +140,10 @@ export const actions: Actions = {
 					});
 				}
 			} else if (split_type === 'exact') {
+				const rate = rawAmount > 0 ? amount / rawAmount : 1;
 				for (const userId of splitUsers) {
-					const userAmount = parseFloat(data.get(`amount_${userId}`) as string) || 0;
+					const rawUserAmount = parseFloat(data.get(`amount_${userId}`) as string) || 0;
+					const userAmount = Math.round(rawUserAmount * rate * 100) / 100;
 					await locals.pb.collection('expense_splits').create({
 						expense: expense.id,
 						user: userId,
@@ -161,13 +168,14 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const expenseId = data.get('expenseId') as string;
 		const description = data.get('description') as string;
-		const amount = parseFloat(data.get('amount') as string);
+		const rawAmount = parseFloat(data.get('amount') as string);
+		const currency = (data.get('currency') as string) || '';
 		const paid_by = data.get('paid_by') as string;
 		const split_type = data.get('split_type') as string;
 		const date = data.get('date') as string;
 		const splitUsers = data.getAll('split_users') as string[];
 
-		if (!expenseId || !description?.trim() || !amount || amount <= 0 || !paid_by || !date) {
+		if (!expenseId || !description?.trim() || !rawAmount || rawAmount <= 0 || !paid_by || !date) {
 			return fail(400, { error: 'All fields are required.' });
 		}
 
@@ -180,12 +188,15 @@ export const actions: Actions = {
 				(sum, userId) => sum + (parseFloat(data.get(`amount_${userId}`) as string) || 0),
 				0
 			);
-			if (Math.round(total * 100) !== Math.round(amount * 100)) {
+			if (Math.round(total * 100) !== Math.round(rawAmount * 100)) {
 				return fail(400, { error: 'Split amounts must add up to the total expense amount.' });
 			}
 		}
 
 		try {
+			const group = await locals.pb.collection('groups').getOne(params.groupId);
+			const amount = await convertCurrency(rawAmount, currency, group.currency, date);
+
 			await locals.pb.collection('expenses').update(expenseId, {
 				description: description.trim(),
 				amount,
@@ -226,8 +237,10 @@ export const actions: Actions = {
 					});
 				}
 			} else if (split_type === 'exact') {
+				const rate = rawAmount > 0 ? amount / rawAmount : 1;
 				for (const userId of splitUsers) {
-					const userAmount = parseFloat(data.get(`amount_${userId}`) as string) || 0;
+					const rawUserAmount = parseFloat(data.get(`amount_${userId}`) as string) || 0;
+					const userAmount = Math.round(rawUserAmount * rate * 100) / 100;
 					await locals.pb.collection('expense_splits').create({
 						expense: expenseId,
 						user: userId,

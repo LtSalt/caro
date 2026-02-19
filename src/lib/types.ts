@@ -1,5 +1,8 @@
 import type { RecordModel } from 'pocketbase';
 
+export const SUPPORTED_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF'] as const;
+export type Currency = (typeof SUPPORTED_CURRENCIES)[number];
+
 export interface User extends RecordModel {
 	email: string;
 	name: string;
@@ -9,7 +12,7 @@ export interface User extends RecordModel {
 export interface Group extends RecordModel {
 	name: string;
 	description: string;
-	currency: 'EUR' | 'USD' | 'GBP' | 'CHF';
+	currency: Currency;
 	created_by: string;
 	members: string[];
 	expand?: {
