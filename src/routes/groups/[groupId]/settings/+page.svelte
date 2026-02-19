@@ -47,33 +47,12 @@
 							</button>
 						</form>
 					{:else if !isOwner && member.id === currentUserId}
-						{#if !showLeaveConfirm}
-							<button
-								onclick={() => (showLeaveConfirm = true)}
-								class="cursor-pointer text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-							>
-								Leave
-							</button>
-						{:else}
-							<div class="flex items-center gap-2">
-								<span class="text-sm text-gray-600 dark:text-gray-400">Leave group?</span>
-								<button
-									type="button"
-									onclick={() => (showLeaveConfirm = false)}
-									class="cursor-pointer text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-								>
-									Cancel
-								</button>
-								<form method="POST" action="?/leaveGroup" use:enhance>
-									<button
-										type="submit"
-										class="cursor-pointer text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-									>
-										Yes, leave
-									</button>
-								</form>
-							</div>
-						{/if}
+						<button
+							onclick={() => (showLeaveConfirm = true)}
+							class="cursor-pointer text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+						>
+							Leave
+						</button>
 					{/if}
 				</div>
 			{/each}
@@ -161,3 +140,36 @@
 		</div>
 	{/if}
 </div>
+
+{#if showLeaveConfirm}
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+		onclick={(e) => { if (e.target === e.currentTarget) showLeaveConfirm = false; }}
+		onkeydown={(e) => { if (e.key === 'Escape') showLeaveConfirm = false; }}
+		role="dialog"
+		aria-modal="true"
+	>
+		<div class="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-lg dark:bg-gray-900">
+			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Leave group?</h3>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">You will be removed from this group and your expense splits will be deleted.</p>
+			<div class="mt-4 grid grid-cols-2 gap-3">
+				<button
+					type="button"
+					onclick={() => (showLeaveConfirm = false)}
+					class="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+				>
+					Cancel
+				</button>
+				<form method="POST" action="?/leaveGroup" use:enhance>
+					<button
+						type="submit"
+						class="w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+					>
+						Yes, leave
+					</button>
+				</form>
+			</div>
+		</div>
+	</div>
+{/if}
