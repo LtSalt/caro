@@ -5,6 +5,7 @@
 
 	let group = $derived(data.group);
 	let members = $derived(data.members);
+	let invitedUsers = $derived(data.invitedUsers ?? []);
 	let currentUserId = $derived(data.currentUserId);
 	let isOwner = $derived(group.created_by === currentUserId);
 
@@ -19,8 +20,8 @@
 	{#if form?.groupUpdated}
 		<div class="rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/30 dark:text-green-300">Group updated.</div>
 	{/if}
-	{#if form?.memberAdded}
-		<div class="rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/30 dark:text-green-300">Member added.</div>
+	{#if form?.invitationSent}
+		<div class="rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/30 dark:text-green-300">Invitation sent.</div>
 	{/if}
 
 	<!-- Members -->
@@ -56,14 +57,36 @@
 					{/if}
 				</div>
 			{/each}
+
+			{#if invitedUsers.length > 0}
+				{#each invitedUsers as invited}
+					<div class="flex items-center justify-between rounded-lg border border-dashed border-gray-300 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+						<div>
+							<span class="font-medium text-gray-500 dark:text-gray-400">{invited.name || invited.email}</span>
+							<span class="ml-2 rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">Pending</span>
+						</div>
+						{#if isOwner}
+							<form method="POST" action="?/cancelInvitation" use:enhance>
+								<input type="hidden" name="userId" value={invited.id} />
+								<button
+									type="submit"
+									class="cursor-pointer text-sm text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+								>
+									Cancel
+								</button>
+							</form>
+						{/if}
+					</div>
+				{/each}
+			{/if}
 		</div>
 
-		<!-- Add member -->
-		<form method="POST" action="?/addMember" use:enhance class="mt-3 flex gap-2">
+		<!-- Invite member -->
+		<form method="POST" action="?/sendInvitation" use:enhance class="mt-3 flex gap-2">
 			<input
 				type="email"
 				name="email"
-				placeholder="Add member by email"
+				placeholder="Invite member by email"
 				required
 				class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-gray-400"
 			/>
@@ -71,7 +94,7 @@
 				type="submit"
 				class="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
 			>
-				Add
+				Invite
 			</button>
 		</form>
 	</div>

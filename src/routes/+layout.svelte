@@ -12,7 +12,7 @@
 </script>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
-	<Navbar user={data.user} />
+	<Navbar user={data.user} invitationCount={data.invitationCount} />
 	<main class="mx-auto max-w-4xl px-4 py-6">
 		{@render children()}
 	</main>

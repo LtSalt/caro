@@ -15,6 +15,7 @@ export interface Group extends RecordModel {
 	currency: Currency;
 	created_by: string;
 	members: string[];
+	invited: string[];
 	expand?: {
 		created_by?: User;
 		members?: User[];

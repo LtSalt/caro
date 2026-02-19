@@ -2,13 +2,23 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { equalSplit } from '$lib/utils';
 
-export const load: PageServerLoad = async ({ parent }) => {
+export const load: PageServerLoad = async ({ parent, locals }) => {
 	const data = await parent();
-	return data;
+
+	const invitedIds = Array.isArray(data.group.invited) ? (data.group.invited as string[]) : [];
+
+	const invitedUsers =
+		invitedIds.length > 0
+			? await locals.pb.collection('users').getFullList({
+					filter: invitedIds.map((id) => `id = "${id}"`).join(' || ')
+				})
+			: [];
+
+	return { ...data, invitedUsers };
 };
 
 export const actions: Actions = {
-	addMember: async ({ request, locals, params }) => {
+	sendInvitation: async ({ request, locals, params }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Not authenticated.' });
 		}
@@ -21,7 +31,6 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Find user by email
 			const users = await locals.pb.collection('users').getFullList({
 				filter: `email = "${email}"`
 			});
@@ -32,24 +41,53 @@ export const actions: Actions = {
 
 			const targetUser = users[0];
 
-			// Check if already a member
 			const group = await locals.pb.collection('groups').getOne(params.groupId);
 			const currentMembers = group.members as string[];
+			const currentInvited = Array.isArray(group.invited) ? (group.invited as string[]) : [];
 
 			if (currentMembers.includes(targetUser.id)) {
 				return fail(400, { error: 'User is already a member.' });
 			}
 
+			if (currentInvited.includes(targetUser.id)) {
+				return fail(400, { error: 'User has already been invited.' });
+			}
+
 			await locals.pb.collection('groups').update(params.groupId, {
-				members: [...currentMembers, targetUser.id]
+				invited: [...currentInvited, targetUser.id]
 			});
 
-			return { memberAdded: true };
+			return { invitationSent: true };
 		} catch (err: unknown) {
 			if (err && typeof err === 'object' && 'status' in err) {
 				throw err;
 			}
-			return fail(400, { error: 'Failed to add member.' });
+			return fail(400, { error: 'Failed to send invitation.' });
+		}
+	},
+
+	cancelInvitation: async ({ request, locals, params }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Not authenticated.' });
+		}
+
+		const data = await request.formData();
+		const userId = data.get('userId') as string;
+
+		try {
+			const group = await locals.pb.collection('groups').getOne(params.groupId);
+			const currentInvited = Array.isArray(group.invited) ? (group.invited as string[]) : [];
+
+			await locals.pb.collection('groups').update(params.groupId, {
+				invited: currentInvited.filter((id: string) => id !== userId)
+			});
+
+			return { invitationCancelled: true };
+		} catch (err: unknown) {
+			if (err && typeof err === 'object' && 'status' in err) {
+				throw err;
+			}
+			return fail(400, { error: 'Failed to cancel invitation.' });
 		}
 	},
 

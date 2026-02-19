@@ -1,13 +1,65 @@
 <script lang="ts">
 	import { toggleTheme, getThemeState } from '$lib/theme.svelte';
+	import { invalidateAll } from '$app/navigation';
+
+	interface Invitation {
+		id: string;
+		name: string;
+	}
 
 	interface Props {
 		user: { id: string; email: string; name: string } | null;
+		invitationCount: number;
 	}
 
-	let { user }: Props = $props();
+	let { user, invitationCount }: Props = $props();
 	let menuOpen = $state(false);
+	let bellOpen = $state(false);
+	let invitations = $state<Invitation[]>([]);
+	let loadingInvitations = $state(false);
+	let fetchError = $state(false);
+	let countOffset = $state(0);
+	let displayCount = $derived(invitationCount + countOffset);
 	const theme = getThemeState();
+
+	async function openBell() {
+		if (bellOpen) {
+			bellOpen = false;
+			return;
+		}
+		bellOpen = true;
+		loadingInvitations = true;
+		fetchError = false;
+		try {
+			const res = await fetch('/api/invitations');
+			if (res.ok) {
+				invitations = await res.json();
+				countOffset = invitations.length - invitationCount;
+			} else {
+				fetchError = true;
+			}
+		} catch {
+			fetchError = true;
+		} finally {
+			loadingInvitations = false;
+		}
+	}
+
+	async function respond(groupId: string, action: 'accept' | 'decline') {
+		invitations = invitations.filter((inv) => inv.id !== groupId);
+		countOffset--;
+
+		await fetch('/api/invitations', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ groupId, action })
+		});
+
+		if (action === 'accept') {
+			bellOpen = false;
+			await invalidateAll();
+		}
+	}
 </script>
 
 <nav class="border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -32,6 +84,66 @@
 			</button>
 
 			{#if user}
+				<!-- Invitation bell -->
+				<div class="relative">
+					<button
+						onclick={openBell}
+						class="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+						title="Invitations"
+					>
+						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+						</svg>
+						{#if displayCount > 0}
+							<span class="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+								{displayCount > 9 ? '9+' : displayCount}
+							</span>
+						{/if}
+					</button>
+
+					{#if bellOpen}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="fixed inset-0 z-10" onclick={() => (bellOpen = false)} onkeydown={() => {}}></div>
+						<div class="absolute right-0 z-20 mt-1 w-72 rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+							<div class="border-b border-gray-200 px-4 py-2 dark:border-gray-700">
+								<p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Invitations</p>
+							</div>
+							{#if loadingInvitations}
+								<p class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+							{:else if fetchError}
+								<p class="px-4 py-3 text-sm text-red-500 dark:text-red-400">Failed to load invitations.</p>
+							{:else if invitations.length === 0}
+								<p class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">No pending invitations.</p>
+							{:else}
+								<div class="divide-y divide-gray-100 dark:divide-gray-700">
+									{#each invitations as invitation}
+										<div class="px-4 py-3">
+											<p class="text-sm text-gray-900 dark:text-gray-100">
+												You've been invited to <span class="font-medium">{invitation.name}</span>
+											</p>
+											<div class="mt-2 flex gap-2">
+												<button
+													onclick={() => respond(invitation.id, 'accept')}
+													class="cursor-pointer rounded-lg bg-gray-900 px-3 py-1 text-xs text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+												>
+													Accept
+												</button>
+												<button
+													onclick={() => respond(invitation.id, 'decline')}
+													class="cursor-pointer rounded-lg border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+												>
+													Decline
+												</button>
+											</div>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<!-- User menu -->
 				<div class="relative">
 					<button
 						onclick={() => (menuOpen = !menuOpen)}
