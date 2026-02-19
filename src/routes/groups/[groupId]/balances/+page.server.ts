@@ -6,10 +6,10 @@ import type { Expense, ExpenseSplit } from '$lib/types';
 export const load: PageServerLoad = async ({ locals, params }) => {
 	const [expenses, splits] = await Promise.all([
 		locals.pb.collection('expenses').getFullList({
-			filter: `group = "${params.groupId}" && settled = false`
+			filter: `group = "${params.groupId}" && settled = false && deleted_at = ""`
 		}),
 		locals.pb.collection('expense_splits').getFullList({
-			filter: `expense.group = "${params.groupId}" && expense.settled = false`
+			filter: `expense.group = "${params.groupId}" && expense.settled = false && expense.deleted_at = ""`
 		})
 	]);
 
