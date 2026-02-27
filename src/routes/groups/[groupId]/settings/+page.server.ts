@@ -248,6 +248,43 @@ export const actions: Actions = {
 		throw redirect(303, '/dashboard');
 	},
 
+	transferOwnership: async ({ request, locals, params }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Not authenticated.' });
+		}
+
+		const data = await request.formData();
+		const newOwnerId = data.get('newOwnerId') as string;
+
+		if (!newOwnerId) {
+			return fail(400, { error: 'Please select a new owner.' });
+		}
+
+		try {
+			const group = await locals.pb.collection('groups').getOne(params.groupId);
+
+			if (group.created_by !== locals.user.id) {
+				return fail(403, { error: 'Only the group owner can transfer ownership.' });
+			}
+
+			const memberIds = group.members as string[];
+			if (!memberIds.includes(newOwnerId) || newOwnerId === locals.user.id) {
+				return fail(400, { error: 'Invalid member selected.' });
+			}
+
+			await locals.pb.collection('groups').update(params.groupId, {
+				created_by: newOwnerId
+			});
+
+			return { ownershipTransferred: true };
+		} catch (err: unknown) {
+			if (err && typeof err === 'object' && 'status' in err) {
+				throw err;
+			}
+			return fail(400, { error: 'Failed to transfer ownership.' });
+		}
+	},
+
 	deleteGroup: async ({ locals, params }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Not authenticated.' });

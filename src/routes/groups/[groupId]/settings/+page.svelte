@@ -11,6 +11,9 @@
 
 	let showDeleteConfirm = $state(false);
 	let showLeaveConfirm = $state(false);
+	let showTransferModal = $state(false);
+	let selectedNewOwner = $state('');
+	let otherMembers = $derived(members.filter((m) => m.id !== currentUserId));
 </script>
 
 <div class="mt-4 space-y-6">
@@ -22,6 +25,9 @@
 	{/if}
 	{#if form?.invitationSent}
 		<div class="rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/30 dark:text-green-300">Invitation sent.</div>
+	{/if}
+	{#if form?.ownershipTransferred}
+		<div class="rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/30 dark:text-green-300">Ownership transferred.</div>
 	{/if}
 
 	<!-- Members -->
@@ -37,7 +43,14 @@
 							<span class="ml-2 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">Owner</span>
 						{/if}
 					</div>
-					{#if isOwner && member.id !== group.created_by}
+					{#if isOwner && member.id === currentUserId}
+						<span
+							class="cursor-not-allowed text-sm text-gray-300 dark:text-gray-600"
+							title="Transfer ownership before leaving"
+						>
+							Leave
+						</span>
+					{:else if isOwner && member.id !== group.created_by}
 						<form method="POST" action="?/removeMember" use:enhance>
 							<input type="hidden" name="userId" value={member.id} />
 							<button
@@ -135,31 +148,41 @@
 		<!-- Danger zone -->
 		<div class="rounded-lg border border-red-200 p-4 dark:border-red-800">
 			<h2 class="mb-2 text-lg font-semibold text-red-600 dark:text-red-400">Danger zone</h2>
-			{#if !showDeleteConfirm}
-				<button
-					onclick={() => (showDeleteConfirm = true)}
-					class="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
-				>
-					Delete group
-				</button>
-			{:else}
-				<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">This will permanently delete the group and all its data.</p>
-				<form method="POST" action="?/deleteGroup" use:enhance class="flex gap-2">
+			<div class="flex flex-col items-start gap-3">
+				{#if otherMembers.length > 0}
 					<button
-						type="button"
-						onclick={() => (showDeleteConfirm = false)}
-						class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+						onclick={() => { showTransferModal = true; selectedNewOwner = otherMembers[0].id; }}
+						class="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
 					>
-						Cancel
+						Transfer ownership
 					</button>
+				{/if}
+				{#if !showDeleteConfirm}
 					<button
-						type="submit"
-						class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+						onclick={() => (showDeleteConfirm = true)}
+						class="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
 					>
-						Yes, delete group
+						Delete group
 					</button>
-				</form>
-			{/if}
+				{:else}
+					<p class="text-sm text-gray-600 dark:text-gray-400">This will permanently delete the group and all its data.</p>
+					<form method="POST" action="?/deleteGroup" use:enhance class="flex gap-2">
+						<button
+							type="button"
+							onclick={() => (showDeleteConfirm = false)}
+							class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+						>
+							Yes, delete group
+						</button>
+					</form>
+				{/if}
+			</div>
 		</div>
 	{/if}
 </div>
@@ -190,6 +213,48 @@
 						class="w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
 					>
 						Yes, leave
+					</button>
+				</form>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showTransferModal}
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+		onclick={(e) => { if (e.target === e.currentTarget) showTransferModal = false; }}
+		onkeydown={(e) => { if (e.key === 'Escape') showTransferModal = false; }}
+		role="dialog"
+		aria-modal="true"
+	>
+		<div class="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-lg dark:bg-gray-900">
+			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Transfer ownership</h3>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Choose a member to become the new group owner.</p>
+			<select
+				bind:value={selectedNewOwner}
+				class="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-gray-400"
+			>
+				{#each otherMembers as member}
+					<option value={member.id}>{member.name || member.email}</option>
+				{/each}
+			</select>
+			<div class="mt-4 grid grid-cols-2 gap-3">
+				<button
+					type="button"
+					onclick={() => (showTransferModal = false)}
+					class="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+				>
+					Cancel
+				</button>
+				<form method="POST" action="?/transferOwnership" use:enhance={() => { return async ({ update }) => { showTransferModal = false; await update(); }; }}>
+					<input type="hidden" name="newOwnerId" value={selectedNewOwner} />
+					<button
+						type="submit"
+						class="w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+					>
+						Transfer
 					</button>
 				</form>
 			</div>
