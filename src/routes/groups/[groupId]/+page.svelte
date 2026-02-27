@@ -18,6 +18,14 @@
 
 	let activeExpenses = $derived(expenses.filter((e) => !settledExpenseIds.has(e.id)));
 	let settledExpenses = $derived(expenses.filter((e) => settledExpenseIds.has(e.id)));
+	let memberIds = $derived(new Set(members.map((m) => m.id)));
+
+	function hasNonMembers(expense: RecordModel): boolean {
+		if (!memberIds.has(expense.paid_by)) return true;
+		const splits = splitsByExpense[expense.id];
+		if (!splits) return false;
+		return splits.some((s) => !memberIds.has(s.user));
+	}
 
 	function daysUntilPurge(deletedAt: string): number {
 		return Math.max(0, 30 - Math.floor((Date.now() - new Date(deletedAt).getTime()) / 86400000));
@@ -157,27 +165,38 @@
 							<span class="font-semibold text-gray-400 opacity-60 dark:text-gray-500">
 								{formatCurrency(expense.amount, group.currency)}
 							</span>
-							<form
-								method="POST"
-								action="?/unsettleExpense"
-								use:enhance={() => {
-									return async ({ update }) => {
-										await update();
-									};
-								}}
-							>
-								<input type="hidden" name="expenseId" value={expense.id} />
-								<button
-									type="submit"
-									onclick={(e) => e.stopPropagation()}
-									class="rounded p-1 text-green-700 hover:bg-gray-100 hover:text-gray-400 dark:text-green-600 dark:hover:bg-gray-800"
-									title="Unsettle"
+							{#if hasNonMembers(expense)}
+								<span
+									class="rounded p-1 text-gray-300 cursor-not-allowed dark:text-gray-600"
+									title="Cannot unsettle: some participants have left the group"
 								>
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 									</svg>
-								</button>
-							</form>
+								</span>
+							{:else}
+								<form
+									method="POST"
+									action="?/unsettleExpense"
+									use:enhance={() => {
+										return async ({ update }) => {
+											await update();
+										};
+									}}
+								>
+									<input type="hidden" name="expenseId" value={expense.id} />
+									<button
+										type="submit"
+										onclick={(e) => e.stopPropagation()}
+										class="rounded p-1 text-green-700 hover:bg-gray-100 hover:text-gray-400 dark:text-green-600 dark:hover:bg-gray-800"
+										title="Unsettle"
+									>
+										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+										</svg>
+									</button>
+								</form>
+							{/if}
 						</div>
 					</div>
 				{/each}
@@ -202,22 +221,33 @@
 								Deleted &middot; {daysUntilPurge(expense.deleted_at)} days until permanent removal
 							</div>
 						</div>
-						<form
-							method="POST"
-							action="?/restoreExpense"
-							use:enhance={() => async ({ update }) => { await update(); }}
-						>
-							<input type="hidden" name="expenseId" value={expense.id} />
-							<button
-								type="submit"
-								class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-green-700 dark:hover:bg-gray-800 dark:hover:text-green-600"
-								title="Restore"
+						{#if hasNonMembers(expense)}
+							<span
+								class="rounded p-1 text-gray-300 cursor-not-allowed dark:text-gray-600"
+								title="Cannot restore: some participants have left the group"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
 								</svg>
-							</button>
-						</form>
+							</span>
+						{:else}
+							<form
+								method="POST"
+								action="?/restoreExpense"
+								use:enhance={() => async ({ update }) => { await update(); }}
+							>
+								<input type="hidden" name="expenseId" value={expense.id} />
+								<button
+									type="submit"
+									class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-green-700 dark:hover:bg-gray-800 dark:hover:text-green-600"
+									title="Restore"
+								>
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+									</svg>
+								</button>
+							</form>
+						{/if}
 					</div>
 				{/each}
 			</div>

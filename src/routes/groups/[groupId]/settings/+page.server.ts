@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { equalSplit } from '$lib/utils';
+import { computeNetBalances } from '$lib/balance';
 
 export const load: PageServerLoad = async ({ parent, locals }) => {
 	const data = await parent();
@@ -182,6 +183,27 @@ export const actions: Actions = {
 
 			if (group.created_by === locals.user.id) {
 				return fail(400, { error: 'You must transfer group ownership before leaving.' });
+			}
+
+			// Check for open debts involving this user
+			const allOpenExpenses = await locals.pb.collection('expenses').getFullList({
+				filter: `group = "${params.groupId}" && settled = false && deleted_at = ""`
+			});
+
+			if (allOpenExpenses.length > 0) {
+				const allSplits = await locals.pb.collection('expense_splits').getFullList({
+					filter: allOpenExpenses.map((e) => `expense = "${e.id}"`).join(' || ')
+				});
+
+				const balances = computeNetBalances(
+					allOpenExpenses as unknown as Array<{ id: string; paid_by: string; amount: number }>,
+					allSplits as unknown as Array<{ expense: string; user: string; amount: number }>
+				);
+
+				const userBalance = balances.get(locals.user.id);
+				if (userBalance !== undefined && Math.abs(userBalance) >= 0.01) {
+					return fail(400, { error: 'You cannot leave while you have unsettled debts. Please settle all balances first.' });
+				}
 			}
 
 			const currentMembers = group.members as string[];

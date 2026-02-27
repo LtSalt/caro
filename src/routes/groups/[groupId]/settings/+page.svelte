@@ -184,7 +184,7 @@
 				>
 					Cancel
 				</button>
-				<form method="POST" action="?/leaveGroup" use:enhance>
+				<form method="POST" action="?/leaveGroup" use:enhance={() => { return async ({ update }) => { showLeaveConfirm = false; await update(); }; }}>
 					<button
 						type="submit"
 						class="w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"

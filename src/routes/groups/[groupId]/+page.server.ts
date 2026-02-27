@@ -2,36 +2,6 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { equalSplit } from '$lib/utils';
 import { convertCurrency } from '$lib/currency';
-import type PocketBase from 'pocketbase';
-
-async function removeNonMemberSplits(pb: PocketBase, expenseId: string, groupId: string) {
-	const group = await pb.collection('groups').getOne(groupId);
-	const memberIds = group.members as string[];
-
-	const splits = await pb.collection('expense_splits').getFullList({
-		filter: `expense = "${expenseId}"`
-	});
-
-	const orphanedSplits = splits.filter((s) => !memberIds.includes(s.user));
-	if (orphanedSplits.length === 0) return;
-
-	const remainingSplits = splits.filter((s) => memberIds.includes(s.user));
-	if (remainingSplits.length === 0) return;
-
-	for (const orphan of orphanedSplits) {
-		const extraAmounts = equalSplit(orphan.amount, remainingSplits.length);
-		for (let i = 0; i < remainingSplits.length; i++) {
-			remainingSplits[i].amount = Math.round((remainingSplits[i].amount + extraAmounts[i]) * 100) / 100;
-		}
-		await pb.collection('expense_splits').delete(orphan.id);
-	}
-
-	for (const split of remainingSplits) {
-		await pb.collection('expense_splits').update(split.id, { amount: split.amount });
-	}
-
-	await pb.collection('expenses').update(expenseId, { split_type: 'exact' });
-}
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	const [expenses, deletedExpenses] = await Promise.all([
@@ -287,12 +257,27 @@ export const actions: Actions = {
 		const expenseId = data.get('expenseId') as string;
 
 		try {
+			// Check if payer or any split participants have left the group
+			const [expense, group] = await Promise.all([
+				locals.pb.collection('expenses').getOne(expenseId),
+				locals.pb.collection('groups').getOne(params.groupId)
+			]);
+			const memberIds = group.members as string[];
+			if (!memberIds.includes(expense.paid_by)) {
+				return fail(400, { error: 'Cannot unsettle: some participants have left the group.' });
+			}
+			const splits = await locals.pb.collection('expense_splits').getFullList({
+				filter: `expense = "${expenseId}"`
+			});
+			const hasNonMembers = splits.some((s) => !memberIds.includes(s.user));
+			if (hasNonMembers) {
+				return fail(400, { error: 'Cannot unsettle: some participants have left the group.' });
+			}
+
 			await locals.pb.collection('expenses').update(expenseId, {
 				settled: false,
 				settled_at: ''
 			});
-
-			await removeNonMemberSplits(locals.pb, expenseId, params.groupId);
 
 			return { unsettled: true };
 		} catch (err) {
@@ -320,7 +305,7 @@ export const actions: Actions = {
 		}
 	},
 
-	restoreExpense: async ({ request, locals }) => {
+	restoreExpense: async ({ request, locals, params }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Not authenticated.' });
 		}
@@ -329,6 +314,23 @@ export const actions: Actions = {
 		const expenseId = data.get('expenseId') as string;
 
 		try {
+			// Check if payer or any split participants have left the group
+			const [expense, group] = await Promise.all([
+				locals.pb.collection('expenses').getOne(expenseId),
+				locals.pb.collection('groups').getOne(params.groupId)
+			]);
+			const memberIds = group.members as string[];
+			if (!memberIds.includes(expense.paid_by)) {
+				return fail(400, { error: 'Cannot restore: some participants have left the group.' });
+			}
+			const splits = await locals.pb.collection('expense_splits').getFullList({
+				filter: `expense = "${expenseId}"`
+			});
+			const hasNonMembers = splits.some((s) => !memberIds.includes(s.user));
+			if (hasNonMembers) {
+				return fail(400, { error: 'Cannot restore: some participants have left the group.' });
+			}
+
 			await locals.pb.collection('expenses').update(expenseId, { deleted_at: null });
 			return { restored: true };
 		} catch {
